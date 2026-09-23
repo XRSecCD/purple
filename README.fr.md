@@ -18,7 +18,7 @@ de l'eau, il ne peut pas improviser, il doit respecter le contrat. Un seul corri
 process métier de ce dépôt : analyse de la vulnérabilité, déploiement de l'environnement victime,
 exploit weaponisé, preuves réseau/système, démo filmée.
 
-« Corridor » est le concept qui décrit cette procédure — pas un outil ou un produit. Le fichier
+« Corridor » est le concept qui décrit cette procédure, pas un outil ou un produit. Le fichier
 [CORRIDOR.fr.md](CORRIDOR.fr.md) reprend tel quel le post LinkedIn publié en juin 2026 qui l'expose
 en détail : suivi et actualité sur [LinkedIn — Xavier Rousseau](https://www.linkedin.com/in/xrousseau/).
 
