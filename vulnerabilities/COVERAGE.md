@@ -1,0 +1,275 @@
+# Coverage — Droits obtenus par exploit
+
+> Dernière mise à jour : 2026-05-29 — 25 CVEs  
+> Environnement de référence : 192.168.68.20 — Ubuntu 24.04, kernel 6.17
+
+---
+
+## Tableau de synthèse
+
+| CVE | Nom | Composant | Vecteur | Type | Droits obtenus | Statut |
+|-----|-----|-----------|---------|------|----------------|--------|
+| CVE-2018-25332 | GitBucket LFS | GitBucket 4.23.1 API LFS | Réseau, non authentifié | Auth Bypass | accès dépôts privés (LFS) | ✓ |
+| CVE-2018-25334 | Zechat CSRF/XSS | Zechat 1.5 web | Réseau, non authentifié | CSRF via XSS | vol token session | ✓ |
+| CVE-2018-25338 | Zechat SQLi union | Zechat 1.5 web | Réseau, non authentifié | SQLi union-based | dump DB complet | ✓ |
+| CVE-2018-25339 | Zechat SQLi time | Zechat 1.5 web | Réseau, non authentifié | SQLi time-based | extraction aveugle DB | ✓ |
+| CVE-2021-47952 | jsonpickle RCE | jsonpickle ≤ 2.0.0 | Réseau, non authentifié | RCE | `root` (dans container) | ✓ |
+| CVE-2025-68613 | n8n ExprInj | n8n 1.120.3 Expression Sandbox | Réseau, authentifié¹ | RCE sandbox escape | `node` (process n8n) | ✓ |
+| CVE-2026-2005 | pgcrypto RCE | PostgreSQL pgcrypto contrib | Réseau, authentifié DB | Heap OvF → RCE | `postgres` OS user | ✓ |
+| CVE-2026-23918 | — | Apache httpd 2.4.66 `mod_http2` | Réseau, non authentifié | DoS + RCE | `daemon` (worker Apache) | DoS ✓ · RCE ✓ |
+| CVE-2026-30893 | Wazuh Cluster RCE | Wazuh Manager 4.4.0 cluster | Réseau, accès port 1516 | Path Traversal → RCE | `wazuh` OS user | ✓ |
+| CVE-2026-31431 | Copy Fail | Linux kernel `AF_ALG` (`authencesn`) | Local, non privilégié | LPE | `root` (uid=0) | ✓ |
+| CVE-2026-33032 | MCPwn | nginx-ui ≤ 2.3.5 (MCP endpoint) | Réseau, semi-authentifié² | RCE | `www-data` (PHP-FPM) | ✓ |
+| CVE-2026-44364 | misp-modules CSRF | misp-modules v3.0.7 | Réseau, non authentifié | CSRF → SSRF | exécution module arbitraire | ✓ |
+| CVE-2026-44381 | MISP SQLi | MISP web (ORDER BY) | Réseau, authentifié³ | SQLi time-based | dump DB + hashes | ✓ |
+| CVE-2026-44789 | n8n pagination RCE | n8n 1.x paginationCompleteWhen | Réseau, authentifié¹ | RCE sandbox escape | `node` (process n8n) | ✓ |
+| CVE-2026-44790 | n8n Git receivepack | n8n 1.x Git node addConfig | Réseau, authentifié¹ | RCE via git | `node` (process n8n) | ✓ |
+| CVE-2026-44791 | n8n XML Pollution | n8n 1.x xml2js + deepCopy | Réseau, authentifié¹ | RCE prototype pollution | `node` (process n8n) | ✓ |
+| CVE-2026-43500 | Dirty Frag | Linux kernel XFRM/ESP (`espintcp`) | Local, non privilégié | LPE | `root` (uid=0) | Demo ESP ✓ |
+| CVE-2026-46300 | Fragnesia | Linux kernel XFRM ESP-in-TCP | Local, non privilégié | LPE | `root` (uid=0) | LPE ✓ |
+| CVE-2026-46333 | ssh-keysign-pwn | Linux `ssh-keysign` FD race | Local, non privilégié | LPE | `root` (uid=0) via FD race | ✓ |
+| CVE-2026-42945 | NGINX Rift | nginx 0.6.27–1.30.0 `ngx_http_rewrite_module` | Réseau, non authentifié | DoS + RCE | `nobody` (worker nginx) | ✓ |
+| CVE-2026-6637 | refint SQLi+BOF | PostgreSQL refint contrib (`check_foreign_key`) | Réseau, authentifié DB | SQLi + Stack BOF | `postgres` superuser | ✓ |
+| CVE-2026-9082 | drupal-sqli-pgsql | Drupal + PostgreSQL jsonapi | Réseau, non authentifié | SQLi boolean-blind | dump DB | ✓ |
+| CVE-2026-9256 | nginx-poolslip | nginx 0.1.17–1.31.0 ngx_http_rewrite | Réseau, non authentifié | DoS (Heap OOB) | worker crash (SIGABRT) | ✓ |
+| CVE-2026-26980 | Ghost CMS SQLi | Ghost CMS 3.24.0–6.19.0 Content API | Réseau, non authentifié | SQLi blind ORDER BY | Admin API key + users + hashes | ✓ |
+| CVE-2026-48095 | 7-Zip NTFS OvF | 7-Zip ≤ 26.00 `NtfsHandler.cpp` | Réseau (delivery fichier), non authentifié | Heap OvF → vtable hijack → RCE | user courant (contexte 7-Zip) | SIGSEGV ✓ · RCE (ASLR=off) ✓ |
+
+> ¹ n8n : authentification API key ou session UI — contournable si credential connue ou Burp intercept  
+> ² CVE-2026-33032 : `node_secret` requis — obtenu en clair via CVE-2026-27944 (`/api/backup`) ou accès fichier  
+> ³ CVE-2026-44381 : authentification MISP standard (user/admin) requise
+
+---
+
+## Détail par CVE
+
+### CVE-2018-25332 — GitBucket 4.23.1 LFS Auth Bypass
+
+- **Mécanisme** : API LFS sans vérification d'authentification sur endpoints batch/objects → accès upload/download non authentifié sur dépôts privés
+- **Droits** : lecture/écriture dépôts LFS sans credentials
+- **Fichiers** : `check_cve_2018_25332.py`, `exploit_cve_2018_25332.py`
+
+---
+
+### CVE-2018-25334 — Zechat 1.5 CSRF via XSS
+
+- **Mécanisme** : token CSRF exposé en commentaire HTML → XSS réfléchi pour forger requêtes authentifiées → vol de session
+- **Droits** : accès session victime (vol cookie/token)
+- **Fichiers** : `check_cve_2018_25334.py`, `exploit_cve_2018_25334.py`
+
+---
+
+### CVE-2018-25338 — Zechat 1.5 SQLi union-based
+
+- **Mécanisme** : paramètre non sanitisé → `UNION SELECT` MySQL, 12 colonnes, séparateur `||` et `0x0a`
+- **Droits** : dump complet de la base de données (messages, users, hashes)
+- **Fichiers** : `check_cve_2018_25338.py`, `exploit_cve_2018_25338.py`
+
+---
+
+### CVE-2018-25339 — Zechat 1.5 SQLi time-based
+
+- **Mécanisme** : injection `1 AND sleep(2)#` → extraction aveugle bit-à-bit via timing (Δ=8s pour 4 lignes)
+- **Droits** : dump DB (identique à 25338, chemin aveugle sans UNION)
+- **Fichiers** : `check_cve_2018_25339.py`, `exploit_cve_2018_25339.py`
+
+---
+
+### CVE-2021-47952 — jsonpickle RCE py/repr
+
+- **Mécanisme** : désérialisation `py/repr` → `eval()` Python arbitraire → exécution OS
+- **Droits** : `root` dans le container jsonpickle-vuln:2.0.0
+- **Fichiers** : `check_cve_2021_47952.py`, `exploit_cve_2021_47952.py`
+
+---
+
+### CVE-2025-68613 — n8n Expression Injection RCE
+
+- **Mécanisme** : IIFE `this`-escape dans sandbox `vm` → accès `process.mainModule` → `child_process.execSync()`
+- **Droits** : `node` user (process n8n) — exécution commandes OS arbitraires
+- **Fichiers** : `check_cve_2025_68613.py`, `exploit_cve_2025_68613.py`
+
+---
+
+### CVE-2026-2005 — PostgreSQL pgcrypto Heap OvF → RCE
+
+- **Mécanisme** : heap overflow dans `pgcrypto` → primitive écriture 3 paquets SET_VARSIZE → `COPY FROM PROGRAM` pour RCE
+- **Droits** : `postgres` OS user — exécution commandes arbitraires
+- **Fichiers** : `check_cve_2026_2005.py`, `exploit_cve_2026_2005.py`
+
+---
+
+### CVE-2026-23918 — Apache httpd 2.4.66 `mod_http2` Double-Free
+
+- **Mécanisme** : double-free sur `h2_stream*` → `SIGABRT` worker ; heap spray fake `apr_cleanup_t` → `system()`
+- **Droits** : worker Apache lancé en `daemon:daemon`
+- **Escalade possible** : chaînable avec LPE kernel pour root
+- **Fichiers** : `exploit_dos_cve_2026_23918.py`, `exploit_rce_cve_2026_23918.py`
+
+---
+
+### CVE-2026-30893 — Wazuh Cluster RCE
+
+- **Mécanisme** : `decompress_files()` — `os.path.join()` bypass via filepath absolu → écriture arbitraire sur le FS du manager Wazuh ; mode config : injection cron `/etc/cron.d/`
+- **Droits** : `wazuh` OS user ; root si cron accessible
+- **Fichiers** : `check_cve_2026_30893.py`, `exploit_cve_2026_30893.py`
+
+---
+
+### CVE-2026-31431 — Copy Fail — Linux `AF_ALG` LPE
+
+- **Mécanisme** : write 4 octets arbitraires dans le page cache via `AF_ALG` + `splice` → écrasement binaire SUID → `execve` → shell root
+- **Prérequis** : shell local non-privilégié
+- **Droits** : `root` (uid=0, gid=0) — immédiat, < 1 s
+- **Fichiers** : `exploit_cve_2026_31431.py`, `exploit_cve_2026_31431_v2.py`
+
+---
+
+### CVE-2026-33032 — MCPwn — nginx-ui ≤ 2.3.5
+
+- **Mécanisme** : bypass JWT via `?node_secret=` → écriture webshell PHP via `nginx_config_add` → FastCGI → RCE
+- **Droits** : `www-data` (PHP-FPM) — exécution commandes arbitraires
+- **Escalade possible** : chaînable avec CVE-2026-31431 ou CVE-2026-43500 / CVE-2026-46300
+- **Fichiers** : `exploit_cve_2026_33032.py`
+
+---
+
+### CVE-2026-44364 — misp-modules CSRF
+
+- **Mécanisme** : endpoint `/query` accepte POST `text/plain` sans CSRF token → déclenchement modules arbitraires depuis navigateur victime
+- **Droits** : exécution de 154 modules misp-modules avec les permissions du service
+- **Fichiers** : `check_cve_2026_44364.py`, `exploit_cve_2026_44364.py`
+
+---
+
+### CVE-2026-44381 — MISP SQLi
+
+- **Mécanisme** : `ORDER BY SLEEP(N)` time-based via paramètre non filtré → extraction bit-à-bit avec `MID(expr FROM pos FOR 1)`
+- **Droits** : dump DB (users, hashes, événements MISP)
+- **Fichiers** : `check_cve_2026_44381.py`, `exploit_cve_2026_44381.py`
+
+---
+
+### CVE-2026-44789 — n8n pagination RCE
+
+- **Mécanisme** : `paginationCompleteWhen='other'` + IIFE expression → sandbox escape → `child_process.execSync()`
+- **Droits** : `node` user (process n8n)
+- **Fichiers** : `check_cve_2026_44789.py`, `exploit_cve_2026_44789.py`
+
+---
+
+### CVE-2026-44790 — n8n Git receivepack injection
+
+- **Mécanisme** : `addConfig('core.receivepack', 'cat')` contourne la validation `targetRepository` → exécution commande git arbitraire
+- **Droits** : `node` user (process n8n)
+- **Fichiers** : `check_cve_2026_44790.py`, `exploit_cve_2026_44790.py`
+
+---
+
+### CVE-2026-44791 — n8n XML Prototype Pollution Bypass → RCE
+
+- **Mécanisme** : `xml2js` + `deepCopy` → `__proto__.defineProperty` bypass sandbox → `$json.root[1].cmd` eval → RCE
+- **Droits** : `node` user (process n8n)
+- **Fichiers** : `check_cve_2026_44791.py`, `exploit_cve_2026_44791.py`
+
+---
+
+### CVE-2026-43500 — Dirty Frag — Linux XFRM/ESP LPE
+
+- **Mécanisme** : user namespace + SA XFRM ESP-in-TCP → déchiffrement AES-GCM in-place sur page cache → écrasement binaire SUID → shell root
+- **Prérequis** : shell local non-privilégié + user namespaces disponibles
+- **Droits** : `root` (uid=0) — < 15 s (chemin SUID), 30 s–45 min (chemin `/etc/passwd`)
+- **Fichiers** : `demo_esp_proof.py`, `exploit_43500.py`
+
+---
+
+### CVE-2026-46300 — Fragnesia — Linux XFRM ESP-in-TCP LPE
+
+- **Mécanisme** : table nonce→keystream AES-GCM → write byte précis dans page cache → binaire SUID → root (déterministe, sans brute-force)
+- **Prérequis** : shell local non-privilégié + user namespaces disponibles
+- **Droits** : `root` (uid=0) — ~1-2s déterministe
+- **Fichiers** : `exploit_46300.py`
+
+---
+
+### CVE-2026-46333 — ssh-keysign-pwn FD Race
+
+- **Mécanisme** : `pidfd_getfd` race condition sur descripteur FD de `ssh-keysign` → accès fichiers privilégiés (shadow, clés SSH, host keys)
+- **Droits** : lecture `/etc/shadow`, clés SSH root, clés hôtes — LPE indirect
+- **Fichiers** : `check_cve_2026_46333.py`, `exploit_cve_2026_46333.py`
+
+---
+
+### CVE-2026-42945 — NGINX Rift — nginx Heap BOF
+
+- **Mécanisme** : `is_args` non réinitialisé après `rewrite ?` → len-pass alloue N octets, copy-pass écrit 3N octets (`+` → `%2B`) → heap BOF → corruption `ngx_pool_cleanup_s` → `system()`
+- **Droits** : `nobody` (worker nginx)
+- **Escalade possible** : chaînable avec CVE-2026-31431 pour passer root
+- **Fichiers** : `check_cve_2026_42945.py`, `exploit_cve_2026_42945.py`
+
+---
+
+### CVE-2026-6637 — PostgreSQL refint SQLi + Stack Overflow
+
+- **Mécanisme** : `check_foreign_key` CASCADE construit SQL sans échappement → error-based SQLi via `::int` cast ; `strcat(sql, " where ")` après `snprintf` → stack OOB → SIGABRT
+- **Droits** : `postgres` superuser (SECURITY DEFINER) → lecture `/etc/passwd`, dump `pg_authid`
+- **Fichiers** : `check_cve_2026_6637.py`, `exploit_cve_2026_6637.py`
+
+---
+
+### CVE-2026-9082 — drupal-sqli-pgsql
+
+- **Mécanisme** : injection dans clé de tableau `filter[xxx]` du endpoint `/jsonapi/node/page` → SQLi boolean-blind sur PostgreSQL
+- **Droits** : dump DB Drupal (users, hashes, contenu)
+- **Fichiers** : `check_cve_2026_9082.py`, `exploit_cve_2026_9082.py`
+
+---
+
+### CVE-2026-9256 — nginx-poolslip
+
+- **Mécanisme** : captures PCRE chevauchantes + `redirect` → len-pass compte 1 fois l'escape `+`→`%2B`, copy-pass l'écrit 2 fois → heap OOB → `SIGABRT` worker (respawn immédiat)
+- **Droits** : crash worker nginx — DoS répétable non authentifié
+- **Fichiers** : `check_cve_2026_9256.py`, `exploit_cve_2026_9256.py`
+
+---
+
+### CVE-2026-26980 — Ghost CMS Content API Blind SQLi
+
+- **Mécanisme** : `filter=slug:[...]` interpolé sans paramétrage dans ORDER BY `CASE WHEN` → blind SQLi unauthenticated via oracle overflow (`exp(710)` MySQL / `abs(-9223372036854775808)` SQLite)
+- **Droits** : Admin API key (`id:secret`) → accès admin Ghost complet + dump users (email, bcrypt hash, nom)
+- **Impact in-the-wild** : 700+ sites compromis (Harvard, Oxford), chaîne ClickFix/FakeCaptcha (Qianxin XLab, 2026-05-07)
+- **Fichiers** : `check_cve_2026_26980.py`, `exploit_cve_2026_26980.py`
+
+---
+
+### CVE-2026-48095 — 7-Zip ≤ 26.00 NTFS Heap Buffer Overflow → RCE
+
+- **Mécanisme** : `GetCuSize()` → UB shift `(UInt32)1 << (28+4)` = 1 → `_inBuf.Alloc(1)` alloue 1 octet → `ReadStream_FALSE` écrit 256 MB → vtable ptr `CInStream` écrasé à heap+304 avec données attaquant → SIGSEGV ou shellcode si ASLR désactivé
+- **Vecteur** : fichier NTFS malveillant (`ClusterSizeLog=28`, `CompressionUnit=4`) livré par HTTP, email ou partage réseau — la victime ouvre l'archive avec 7-Zip
+- **Droits** : user courant (contexte 7-Zip) — RCE arbitraire si ASLR désactivé ; SIGSEGV (DoS) systématique
+- **Fichiers** : `check_cve_2026_48095.py`, `exploit_cve_2026_48095.py`
+
+---
+
+## Chaînes d'exploitation
+
+```
+Réseau (sans accès initial)
+  ├── CVE-2026-33032  → www-data
+  │     └── + CVE-2026-31431 / CVE-2026-43500 / CVE-2026-46300  → root
+  ├── CVE-2026-42945  → nobody (nginx)
+  │     └── + CVE-2026-31431 / CVE-2026-43500 / CVE-2026-46300  → root
+  ├── CVE-2026-2005   → postgres (OS)
+  ├── CVE-2026-6637   → postgres superuser (DB + OS read)
+  ├── CVE-2021-47952  → root (container)
+  ├── CVE-2025-68613 / CVE-2026-44789 / CVE-2026-44790 / CVE-2026-44791  → node (n8n)
+  ├── CVE-2026-9082 / CVE-2026-44381 / CVE-2018-25338 / CVE-2018-25339  → dump DB
+  ├── CVE-2026-26980  → Admin API key Ghost (accès admin complet sans auth)
+  └── CVE-2026-48095  → RCE user courant (victime ouvre archive 7-Zip malveillante)
+
+Local (accès shell non-root déjà obtenu)
+  ├── CVE-2026-31431  → root  (kernel AF_ALG)
+  ├── CVE-2026-43500  → root  (kernel XFRM ESP)
+  ├── CVE-2026-46300  → root  (kernel XFRM ESP-in-TCP, déterministe)
+  └── CVE-2026-46333  → shadow/SSH keys (FD race ssh-keysign)
+```
