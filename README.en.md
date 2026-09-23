@@ -14,17 +14,17 @@ team, cyber range, educational demonstration).
 This repository isn't produced by a *harness* (a layer that corrects the model after the fact), but
 by a **corridor**: a strict contract written by the expert before the first prompt, defining the
 steps to follow, the evidence to produce, and the rules to respect. The model isn't guided along the
-way — it can't improvise, it must comply with the contract. A single corridor covers the entire
+way, it can't improvise, it must comply with the contract. A single corridor covers the entire
 business process behind this repository: vulnerability analysis, victim environment deployment,
 weaponized exploit, network/system evidence, filmed demo.
 
-"Corridor" is the concept describing this procedure — not a tool or a product. The
+"Corridor" is the concept describing this procedure, not a tool or a product. The
 [CORRIDOR.en.md](CORRIDOR.en.md) file is a translation of the LinkedIn post published in June 2026
 that lays it out in detail: updates and follow-up on [LinkedIn — Xavier Rousseau](https://www.linkedin.com/in/xrousseau/).
 
 The corridor is a contract, not a technical integration: it doesn't depend on any particular model.
 This repository was produced with Claude, but the same principle works identically with Qwen, Codex,
-or any other model capable of following a written contract — that's precisely the point of this
+or any other model capable of following a written contract, that's precisely the point of this
 approach compared to a harness built for one specific model.
 
 ---
