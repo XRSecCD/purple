@@ -5,7 +5,7 @@ détection de vulnérabilités connues (CVE), dans un cadre strictement autoris�
 team, cyber range, démonstration pédagogique).
 
 > Auteur : [Xavier Rousseau](https://www.linkedin.com/in/xrousseau/) — 2026
-> Usage : authorized use only — security demos, red team, authorized pentests.
+> Usage : authorized use only | security demos, red team, authorized pentests.
 
 ---
 
@@ -14,7 +14,7 @@ team, cyber range, démonstration pédagogique).
 Ce dépôt n'est pas produit par un *harness* (une couche qui corrige le modèle après coup), mais par
 un **corridor** : un contrat strict rédigé par l'expert avant le premier prompt, qui définit les
 étapes à suivre, les preuves à produire et les règles à respecter. Le modèle n'est pas guidé au fil
-de l'eau — il ne peut pas improviser, il doit respecter le contrat. Un seul corridor couvre tout le
+de l'eau, il ne peut pas improviser, il doit respecter le contrat. Un seul corridor couvre tout le
 process métier de ce dépôt : analyse de la vulnérabilité, déploiement de l'environnement victime,
 exploit weaponisé, preuves réseau/système, démo filmée.
 
@@ -24,7 +24,7 @@ en détail : suivi et actualité sur [LinkedIn — Xavier Rousseau](https://www.
 
 Le corridor est un contrat, pas une intégration technique : il ne dépend d'aucun modèle en
 particulier. Ce dépôt a été produit avec Claude, mais le principe fonctionne à l'identique avec
-Qwen, Codex ou tout autre modèle capable de suivre un contrat écrit — c'est justement tout l'intérêt
+Qwen, Codex ou tout autre modèle capable de suivre un contrat écrit, c'est justement tout l'intérêt
 de l'approche par rapport à un harness taillé pour un modèle donné.
 
 ---
